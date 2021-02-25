@@ -91,7 +91,7 @@ wad2m_subset_IL <- crop(wad2m_subset, bb)
 Try plotting the first year:
 
 ```{r}
-plot(wad2m_subset_IL[[57:72]])
+plot(wad2m_subset_IL[[49:66]])
 ```
 
 Looks good. Now save as raster stack:
@@ -100,7 +100,7 @@ Looks good. Now save as raster stack:
 writeRaster(wad2m_subset_IL, "/Users/gavin/Documents/Personnel/Students/Independent Study/Mary Wrightsman/eaes-396-spring-2021/data/wad2m/wad2m_subset_IL.tiff", format = "GTiff")
 ```
 
-There are interesting inter-annual wetland dynamics. For example, April 2015 and 2018 has lower wetland cover than April 2016 and 2017. It is possible this is due to seasonal precipitation patterns.
+There are interesting inter-annual wetland dynamics. For example, April 2013 and 2014 has lower wetland cover than April 2012 and 2015. It is possible this is due to seasonal precipitation patterns.
 
 ```{r message = F}
 met_data <- read_csv("/Users/gavin/Documents/Personnel/Students/Independent Study/Mary Wrightsman/eaes-396-spring-2021/data/CHAMPAIGN 9 SW, IL US (WBAN-54808).csv")
@@ -142,13 +142,13 @@ Still hard to see. Try looking just at April `MonthlyPrecipitation` for the year
 
 ```{r}
 precip_data_monthly %>% 
-  filter(Year %in% c(2014:2017) & Month %in% c(3,4)) %>% 
+  filter(Year %in% c(2012:2015) & Month %in% c(3,4)) %>% 
   group_by(Year) %>% 
   summarize(MarAprPrecip = sum(MonthlyPrecipitation)) %>% 
   arrange(desc(MarAprPrecip))
 ```
 
-**NOTE** There is a strong pattern with higher rainfall totals in March and April (> 7 inches) in 2016/2017 compared to 2015 (2018 has missing data).
+**NOTE** There is a strong pattern with very high rainfall totals in March and April (> 9 inches) in 2013 compared to 2012-2014.
 
 
 
