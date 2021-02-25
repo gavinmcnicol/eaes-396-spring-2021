@@ -17,6 +17,7 @@ library(raster)
 library(ncdf4)
 library(sf)
 library(rgdal)
+library(rwunderground)
 ```
 
 The goals of this independent study project are to:
@@ -90,7 +91,7 @@ wad2m_subset_IL <- crop(wad2m_subset, bb)
 Try plotting the first year:
 
 ```{r}
-plot(wad2m_subset_IL[[1:4]])
+plot(wad2m_subset_IL[[60:76]])
 ```
 
 Looks good. Now save as raster stack:
