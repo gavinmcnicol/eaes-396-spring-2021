@@ -150,5 +150,233 @@ precip_data_monthly %>%
 
 **NOTE** There is a strong pattern with very high rainfall totals in March and April (> 9 inches) in 2013 compared to 2012-2014.
 
+See if this translates to a large difference in methane fluxes in our upscaling product:
 
+```{r}
+upch4 <- brick("/Volumes/LACIE SHARE/Stanford CH4/June 2020 Upscaling/Predictions/Gridded/TgCH4_weighted/upch4_v03_m5_TgCH4month_Aw.nc")
+upch4
+```
 
+The product runs 2001-2015 (15 years = 180 months). Subset same months as for wetland extent:
+
+```{r}
+months <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+all_months <- rep(months, 15)
+month_subset <- c("Jan", "Apr", "Jul",  "Oct")
+index <- all_months %in% month_subset
+index_loc <- c(1:180)[index == T]
+```
+
+Apply index to subset months:
+
+```{r}
+upch4_subset <- upch4[[index_loc]]
+```
+
+Then crop to Illinois:
+
+```{r}
+upch4_subset_IL <- crop(upch4_subset, bb)
+```
+
+Try plotting the first year:
+
+```{r}
+plot(upch4_subset_IL[[45:60]])
+```
+
+The spatial pattern is similar to wetland extent, but total fluxes are hard to attribute. Try summing for all months:
+
+```{r}
+upch4_IL <- crop(upch4, bb)
+
+TgCH4 <- cellStats(upch4_IL, sum)
+
+ch4_monthly_IL <- cbind(Month = all_months, TgCH4) %>% 
+  as_tibble() %>% 
+  mutate(Year = rep( 2001:2015, each = 12),
+         Month = rep( 1:12, 15),
+         DecYear = Year + (Month/12),
+         TgCH4 = as.numeric(TgCH4))
+  
+
+ch4_monthly_IL %>% 
+  ggplot(aes(DecYear, TgCH4)) + 
+  geom_point()
+
+```
+
+There are just a few months with very high fluxes, which are those?
+
+```{r}
+ch4_monthly_IL %>% 
+  group_by(Month) %>% 
+  summarize(meanTgCH4 = mean(TgCH4)) %>% 
+  arrange(desc(meanTgCH4)) %>% 
+  mutate(relative_size = meanTgCH4/min(0.002))
+```
+
+**NOTE** Illinois methane flux peaks in April-June (about 3-10x baseline winter fluxes).
+
+How much of this is driven by wetland flux, versus wetland extent?
+
+```{r}
+upch4_nmol <- brick("/Volumes/LACIE SHARE/Stanford CH4/June 2020 Upscaling/Predictions/Gridded/nmol_unweighted/pred_v03_nmolm2sec_m5.nc")
+upch4_nmol
+```
+
+The product also runs 2001-2015 (15 years = 180 months). Subset same months as for wetland extent:
+
+```{r}
+months <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+all_months <- rep(months, 15)
+month_subset <- c("Jan", "Apr", "Jul",  "Oct")
+index <- all_months %in% month_subset
+index_loc <- c(1:180)[index == T]
+```
+
+Apply index to subset months:
+
+```{r}
+upch4_nmol_subset <- upch4_nmol[[index_loc]]
+```
+
+Then crop to Illinois:
+
+```{r}
+upch4_nmol_subset_IL <- crop(upch4_nmol_subset, bb)
+```
+
+Try plotting the first year:
+
+```{r}
+plot(upch4_nmol_subset_IL[[45:60]])
+```
+
+The spatial pattern in predicted wetland flux is *very different* to wetland extent, there is a high level of spatial heterogeneity, and it  varies year to year. The seasonal signal looks larger than the Tg seasonality:
+
+```{r}
+upch4_nmol_IL <- crop(upch4_nmol, bb)
+
+CH4nmol_mean <- cellStats(upch4_nmol_IL, mean)
+CH4nmol_median <- cellStats(upch4_nmol_IL, median)
+
+ch4nmol_monthlymean_IL <- cbind(Month = all_months, CH4nmol_mean) %>% 
+  cbind(CH4nmol_median) %>% 
+  as_tibble() %>% 
+  mutate(Year = rep( 2001:2015, each = 12),
+         Month = rep( 1:12, 15),
+         DecYear = Year + (Month/12),
+         CH4nmol_mean = as.numeric(CH4nmol_mean),
+         CH4nmol_median = as.numeric(CH4nmol_median))
+  
+
+ch4nmol_monthlymean_IL %>% 
+  ggplot(aes(DecYear, CH4nmol_mean)) + 
+  geom_point() + 
+  geom_point(aes(DecYear, CH4nmol_median), color = "red")
+
+```
+
+The seasonal pattern is much more consistent when we look at predicted wetland fluxes (not weighted by wetland area). There is very little difference between the mean and median flux.
+
+Is the seasonal pattern also larger in amplitude? 
+
+```{r}
+ch4nmol_monthlymean_IL %>% 
+  group_by(Month) %>% 
+  summarize(CH4nmol_mean = mean(CH4nmol_mean)) %>% 
+  arrange(desc(CH4nmol_mean)) %>% 
+  mutate(relative_size = CH4nmol_mean/min(15))
+```
+
+**NOTE** Surprisingly, no the seasonal amplitude is actually smaller relative to baseline fluxes. And, it's less concentrated in the spring months. For the same range (~3-9x over baseline), it includes the months of May through October. 
+
+This suggests that the wetland extent may be more of a constraint on the total CH4 flux.
+
+Apply same analysis to wetland extent:
+
+```{r}
+wad2m_IL <- crop(wad2m[[13:192]], bb)
+
+wad2m_IL_sum <- cellStats(wad2m_IL, sum)
+
+wad2m_IL_monthlysum <- cbind(Month = all_months, wad2m_IL_sum) %>% 
+  as_tibble() %>% 
+  mutate(Year = rep( 2001:2015, each = 12),
+         Month = rep( 1:12, 15),
+         DecYear = Year + (Month/12),
+         wad2m_IL_sum = as.numeric(wad2m_IL_sum))
+  
+
+wad2m_IL_monthlysum %>% 
+  ggplot(aes(DecYear, wad2m_IL_sum)) + 
+  geom_point()
+```
+
+```{r}
+wad2m_IL_monthlysum %>% 
+  group_by(Month) %>% 
+  summarize(wad2m_IL_sum = mean(wad2m_IL_sum)) %>% 
+  arrange(desc(wad2m_IL_sum)) %>% 
+  mutate(relative_size = wad2m_IL_sum/min(1))
+```
+
+On average (2001-2015), wetland area in Illinois peaks in May, drops to a minimum in August, then increases again from December through Feb.
+
+Let's look at some correlations:
+
+```{r message = F}
+all_data <- ch4nmol_monthlymean_IL %>% 
+  left_join(wad2m_IL_monthlysum) %>% 
+  left_join(ch4_monthly_IL) %>% 
+  left_join(precip_data_monthly) %>% 
+  dplyr::select(Year, Month, DecYear, everything()) %>% 
+  filter(!is.na(MonthlyPrecipitation))
+
+# precipitation as a predictor of total wetland area
+all_data %>% 
+  mutate(Season = ifelse(Month < 7, "Growing", "Scenescing")) %>% 
+  ggplot(aes(MonthlyPrecipitation, wad2m_IL_sum, color = factor(Season))) +
+  geom_point()
+```
+
+In the first half of the year, wetland area correlates roughly with monthly precipitation, however that relationship largely disappears in the second half of the year. Possibly due to 1) summer drought, 2) then precipitation as snow in winter?
+
+```{r message = F}
+# wetland area as a predictor of total IL methane flux
+all_data %>% 
+  ggplot(aes(wad2m_IL_sum, TgCH4, color = factor(Month))) +
+  geom_point()
+```
+
+Total IL CH4 emissions show a hysteric response to wetland area:
+
+  1. Winter to Spring increases in wetland area do little to increase methane flux. 
+  2. Flux then grow exponentially to a peak during late spring and early summer. 
+  3. Finally, fluxes decrease almost monotonically through till the late summer. 
+      - Wetland area declines more steeply during this same period, suggesting that ongoing increases in wetland methane flux partially offset the rapid decline.
+
+```{r message = F}
+# wetland flux as a predictor of total IL methane flux
+all_data %>% 
+  ggplot(aes(CH4nmol_mean, TgCH4, color = factor(Month))) +
+  geom_point()
+```
+
+Total IL CH4 emisisons are also dependent on wetland fluxes in a hysteric manner:
+
+  1. From December-June, emissions rise almost monotonically with increasing wetland fluxes
+      - Presumably driven by increases in temperature and productivity (and thaw?)
+  2. From June to August, emissions drop monotonically while wetland fluxes continue to increase
+  3. A gradual third monotonic decline occurs in from late summer to winter
+      - Likely most constrained by limited wetland area
+
+**CONCLUSION** This cursory analysis indicates that in Illinois:
+
+  + FLUXNET-CH4 predicts large FCH4 seasonality annually from ~10 (Jan) to 130 (Aug) nmol m-2 s-1
+  + WAD2M wetland extent varies from a minimum in August to a maximum in spring (x6-12 relative increase)
+      - This seasonality and its inter-annual variation is dependent on the amount of Springtime precipitation
+  + The a-synchronicity in wetland CH4 flux and wetland area peaks lead to a:
+      - overall peak FCH4 emission in May-June (> 0.01 Tg per month per IL region)
+      - emission minimums in winter, with average minimum in November (< 0.001 Tg per month per IL region)
