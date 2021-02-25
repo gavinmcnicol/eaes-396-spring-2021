@@ -11,8 +11,91 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Load packages:
 
-```{r}
+```{r message = F}
 library(tidyverse)
 library(raster)
+library(ncdf4)
+library(sf)
+library(rgdal)
+```
+
+The goals of this independent study project are to:
+
+  1. Evaluate recent large-scale carbon cycle and wetland extent products in Illinois, including:
+      + USFWS National Wetlands Inventory vs. WAD2M (SWAMPS-GLWD) vs. GEIMS v3.5
+      + 1 km Global Soil Respiration (Warner et al. 2019)
+      + 25 km FLUXNET-CH4 Upscaling (tentative version) (McNicol et al. in prep.)
+      + US Wetland Methane Model (Matthews et al. )
+      + Carbon Tracker (...)
+      
+  2. Compare and contrast reference and created wetlands in Chicagoland in terms of:
+      + Greenness
+      + Phenology 
+      + Land surface temperature 
+      + Evapotranspiration
+      + Hydrological datasets (e.g. connected USGS gages)
+      
+The independent study student this semester wants to gain experience in QGIS, not R.  So much of this code is preparing geotif datafiles to work with in QGIS. 
+
+#### Re-write geospatial data (.nc) as .geotifs for use in QGIS
+
+1. Evaluate recent large-scale carbon cycle and wetland extent products in Illinois.
+
+**Capture 4 months per year Jan, Apr, Jul, Oct**
+
+Start by creating a bounding box for Illinois:
+
+```{r}
+xmin <- -91.513079
+ymin <- 36.970298
+xmax <- -87.494756
+ymax <- 42.508481
+
+p1 = st_point(c(xmax, ymax))
+p2 = st_point(c(xmin, ymin))
+sfc = st_(p1, p2, crs = 4326)
+
+bb <- st_bbox(sfc)
+```
+
+Get WAD2M (Wetalnd Extent and Dynamics Product) [Zhang et al. in review](10.5194/essd-2020-262Earth) :
+
+```{r}
+wad2m <- brick("/Volumes/LACIE SHARE/Stanford CH4/June 2020 Upscaling/Grids/WAD2M/gcp-ch4_wetlands_2000-2018_025deg.nc")
+str(wad2m)
+```
+
+The dataset runs from 2000-2018 (n = 228). Create index to subset only J, A, J, O:
+
+```{r}
+months <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+all_months <- rep(months, 19)
+month_subset <- c("Jan", "Apr", "Jul",  "Oct")
+index <- all_months %in% month_subset
+index_loc <- c(1:228)[index == T]
+```
+
+Apply index to subset months:
+
+```{r}
+wad2m_subset <- wad2m[[index_loc]]
+```
+
+Then crop to Illinois:
+
+```{r}
+wad2m_subset_IL <- crop(wad2m_subset, bb)
+```
+
+Try plotting the first year:
+
+```{r}
+plot(wad2m_subset_IL[[1:4]])
+```
+
+Looks good. Now save as raster stack:
+
+```{r}
+writeRaster(wad2m_subset_IL, "/Users/gavin/Documents/Personnel/Students/Independent Study/Mary Wrightsman/eaes-396-spring-2021/data/wad2m/wad2m_subset_IL.tiff", format = "GTiff")
 ```
 
